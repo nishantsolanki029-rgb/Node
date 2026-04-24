@@ -5,10 +5,15 @@ const bcrypt = require("bcrypt");
 const useModel = require("./Models/user.model");
 const postModel = require("./Models/post.model");
 const userModel = require("./Models/user.model");
+const path = require('path');
+const upload = require("./config/multer");
 
 const app = express();
 
 app.use(express.json());
+
+app.use(express.static(path.join(__dirname, "public")))
+
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser());
@@ -24,53 +29,60 @@ app.get("/signup", (req, res) => {
     res.render("signup");
 })
 
-app.get("/profile", auth, async (req,res)=>{
-    let user = await userModel.findOne({email: req.user.email})
+app.get("/profile", auth, async (req, res) => {
+    let user = await userModel.findOne({ email: req.user.email })
+        .populate("posts");
+    // console.log(user);
 
-    res.render("profile", {user});
+    res.render("profile", { user });
 })
 
-app.get("/post", auth,  (req, res)=>{
+app.get("/post", auth, (req, res) => {
     res.render("post");
 })
 
+app.get('/editprofile', auth, async (req, res) => {
+    let user = await userModel.findOne({ email: req.user.email });
+
+    res.render("editprofile", { user });
+});
 
 // backend + database logic
 // dsignup user ==> create a new user
 app.post('/create', (req, res) => {
 
-    let { fullname, username, email, phone, image, password} = req.body;
+    let { fullname, username, email, phone, image, password } = req.body;
 
     bcrypt.hash(password, 10, async (err, hash) => {
-       try {
-        await userModel.create({
-            fullname,
-            username,
-            email,
-            phone,
-            password: hash,
-            image
-        });
-       } catch (err) {
-        console.log(err);
-       }
+        try {
+            await userModel.create({
+                fullname,
+                username,
+                email,
+                phone,
+                password: hash,
+                image
+            });
+        } catch (err) {
+            console.log(err);
+        }
     });
     res.redirect("/")
 });
 
 // login user ==> check email and password, redirect to profile page
-app.post("/login", async (req,res)=>{
-   let user = await userModel.findOne({email: req.body.email});
+app.post("/login", async (req, res) => {
+    let user = await userModel.findOne({ email: req.body.email });
 
-    if(!user.email){
+    if (!user.email) {
         res.send("Somthing Went Wrong - Email")
-    } else{
-        bcrypt.compare(req.body.password, user.password, (err, result)=>{
-            if(result){
-                let token = jwt.sign({email: user.email}, "aabbcc");
+    } else {
+        bcrypt.compare(req.body.password, user.password, (err, result) => {
+            if (result) {
+                let token = jwt.sign({ email: user.email }, "aabbcc");
                 res.cookie("token", token);
                 res.redirect("/profile");
-            } else{ 
+            } else {
                 res.send("Somthing Went Wrong");
             }
         });
@@ -78,22 +90,24 @@ app.post("/login", async (req,res)=>{
 });
 
 // logout user ==> remove token from cookie
-app.get("/logout", (req, res)=>{
-    res.clearCookie();
+app.get("/logout", (req, res) => {
+    res.clearCookie("token");
     res.redirect("/");
 });
 
 // create post
-app.post('/post',auth, async(req, res) =>{
-    let user = await userModel.findOne({email: req.user.email});
+app.post('/post', auth, upload.single('imgurl'), async (req, res) => {
+    let user = await userModel.findOne({ email: req.user.email });
 
-    let {title, description, imgurl} = req.body;
+    let { title, description } = req.body;
 
-   let createPost = await postModel.create({
+    console.log(req.file);
+
+    let createPost = await postModel.create({
         userId: user._id,
         title,
         description,
-        imgurl,
+        imgurl: req.file.filename
     });
 
     // add (push) posts into user data
@@ -103,14 +117,46 @@ app.post('/post',auth, async(req, res) =>{
     res.redirect("/profile");
 });
 
+// edit profile 
+app.post("/edit", auth, async (req, res) => {
+    let { fullname, username, email, phone, image } = req.body;
+
+    await userModel.findOneAndUpdate(
+        { email: req.user.email },
+        {
+            fullname,
+            username,
+            email,
+            phone,
+            image
+        },
+        { new: true },
+    );
+    res.redirect("/profile");
+});
+
+app.get("/delete/:id", auth, async(req, res) => {
+   let user = await useModel.findOne({email: req.user.email});
+
+   let post = await postModel.findOneAndDelete({_id:req.params.id});
+
+   let postNumber = user.posts.indexOf(req.params.id);
+
+   user.posts.splice(postNumber, 1);
+   await user.save();
+
+   res.redirect("/profile")
+});
+
 // MiddleWare Functions
-function auth (req, res, next){
+function auth(req, res, next) {
     // console.log(req, res, next);
     let token = req.cookies.token;
-    if(!token){
+    if (!token) {
         res.send("Access Denied !!");
+        // res.send("/");
     }
-    try{
+    try {
         let verified = jwt.verify(token, "aabbcc");
         req.user = verified // this data sent into rouute(check profile route, you can access email like req.user.email)
 
@@ -122,4 +168,4 @@ function auth (req, res, next){
 
 app.listen(3000, () => {
     console.log("✅ server is running");
-});
+});         

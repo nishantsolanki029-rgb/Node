@@ -6,7 +6,7 @@ let postSchema = mongoose.Schema(
     {
     userId: {type: mongoose.Schema.Types.ObjectId, ref: "user"},
     title: String,
-    descripiton: String,
+    description: String,
     imgurl: String,
     }, 
     {timestamps: true},

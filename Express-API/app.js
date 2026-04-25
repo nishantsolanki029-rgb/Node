@@ -5,11 +5,13 @@ const cors = require("cors");
 const db = require("./config/db");
 const cookieParser = require("cookie-parser")
 // Route
-const userRouter = require("./routes/web/v1/user.route")
-const adminRouter = require("./routes/web/v1/admin.route")
-const productRouter = require("./routes/web/v1/product.route")
-const chatRouter = require("./routes/web/v1/chat.route")
+const userRouter = require("./routes/Web/v1/user.route")
+const adminRouter = require("./routes/Web/v1/admin.route")
+const productRouter = require("./routes/Web/v1/product.route")
+const chatRouter = require("./routes/Web/v1/chat.route")
 const cartRouter = require("./routes/Web/v1/cart.route")
+const orderRouter = require("./routes/Web/v1/order.route")
+const wishlistRouter = require("./routes/Web/v1/wishlist.route")
 
 const app = express();
 
@@ -34,10 +36,12 @@ app.get("/", (req, res) => {
 });
 
 app.use("/user", userRouter); //--> localhost:3002/user/register
-app.use("/admin", adminRouter)// --> url/admin/all/user
-app.use("/product", productRouter)
-app.use("/bot", chatRouter)
-app.use("/cart", cartRouter)
+app.use("/admin", adminRouter);// --> url/admin/all/user
+app.use("/product", productRouter);
+app.use("/bot", chatRouter);
+app.use("/cart", cartRouter);
+app.use("/order", orderRouter);
+app.use("/wishlist", wishlistRouter);
 
 
 app.listen(PORT, () => {
